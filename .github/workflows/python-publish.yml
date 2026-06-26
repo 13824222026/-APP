@@ -1,0 +1,50 @@
+ yaml
+     name: Build Android APK
+
+     on:
+       workflow_dispatch:
+       push:
+         branches: [ main, master ]
+
+     jobs:
+       build:
+         runs-on: ubuntu-latest
+         steps:
+           - name: Checkout code
+             uses: actions/checkout@v4
+
+           - name: Set up Python
+             uses: actions/setup-python@v5
+             with:
+               python-version: '3.11'
+
+           - name: Install system dependencies
+             run: |
+               sudo apt-get update -qq
+               sudo apt-get install -y -qq \
+                 git zip unzip openjdk-17-jdk \
+                 autoconf libtool pkg-config \
+                 zlib1g-dev libncurses5-dev libncursesw5-dev \
+                 cmake libffi-dev libssl-dev \
+                 wget curl
+
+           - name: Install Python dependencies
+             run: |
+               pip install --upgrade pip setuptools wheel
+               pip install buildozer cython
+
+           - name: Set Java home
+             run: |
+               echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
+
+           - name: Build with Buildozer
+             run: |
+               cd ${{ github.workspace }}
+               buildozer android debug
+
+           - name: Upload APK artifact
+             uses: actions/upload-artifact@v4
+             with:
+               name: marketprices-apk
+               path: ${{ github.workspace }}/bin/*.apk
+               if-no-files-found: error
